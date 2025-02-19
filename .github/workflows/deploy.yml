@@ -12,13 +12,17 @@ jobs:
 
       - name: 配置 SSH 私钥
         run: |
+          # 创建SSH目录结构 
+          mkdir -p ~/.ssh 
+          chmod 700 ~/.ssh 
+
           # 写入全局保活配置 
-          cat >> ~/.ssh/config << EOF 
+          cat >> ~/.ssh/config << EOF
           Host *
               ServerAliveInterval 300 
               ServerAliveCountMax 2 
               TCPKeepAlive yes 
-          EOF 
+          EOF
 
           # 设置权限 
           chmod 600 ~/.ssh/config 
