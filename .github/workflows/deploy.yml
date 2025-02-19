@@ -47,7 +47,6 @@ jobs:
             # 启动新容器（健康检查+端口映射）
             docker run -d \
               --name new-app \
-              --env-file /opt/app/.env \
               -p 3000:3000 \
               --health-cmd 'curl --fail http://localhost:3000/health || exit 1' \
               docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
