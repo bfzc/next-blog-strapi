@@ -31,7 +31,11 @@ jobs:
 
       - name: 远程部署到 UCloud 服务器
         run: |
-          ssh -i ~/.ssh/ucloud_ssh_key root@${{ secrets.UCLOUD_HOST }} << EOF
+          ssh -i ~/.ssh/ucloud_ssh_key root@${{ secrets.UCLOUD_HOST }} << 'DEPLOY_EOF'
+            echo -e "\n\033[42;1;37m 🔥 SSH登录成功！ [$(date '+%H:%M:%S')] \033[0m\n"
+            echo -e "\033[35m▶︎ 主机信息：\033[0m"
+            echo "IP地址：$(curl -s ifconfig.me)" 
+            echo "系统负载：$(uptime | awk -F 'load average:' '{print $2}')"
             # 拉取最新镜像 
             docker pull docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
             
@@ -69,4 +73,4 @@ jobs:
               echo '❌ 部署失败：已回滚至上一版本'
               exit 1
             fi
-          EOF
+          DEPLOY_EOF
