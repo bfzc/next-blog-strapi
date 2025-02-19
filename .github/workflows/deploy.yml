@@ -28,7 +28,7 @@ jobs:
           # 私钥
           echo "${{ secrets.UCLOUD_SSH_KEY }}" > ~/.ssh/ucloud_ssh_key 
           chmod 600 ~/.ssh/ucloud_ssh_key 
-          
+
           ssh-keyscan ${{ secrets.UCLOUD_HOST }} >> ~/.ssh/known_hosts
 
       - name: 登录 Docker 仓库
@@ -64,7 +64,7 @@ jobs:
             # 启动新容器
             docker run -d \
               --name next-blog-strapi \
-              -p 3000:3000 \
+              -p 1337:1337 \
               --restart unless-stopped \
               docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
 
