@@ -4,75 +4,17 @@ on:
     branches: [main]
 
 jobs:
-  build-deploy:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 检出代码
-        uses: actions/checkout@v4
-
-      - name: 配置 SSH 私钥
-        run: |
-          # 创建SSH目录结构 
-          mkdir -p ~/.ssh 
-          chmod 700 ~/.ssh 
-
-          # 全局保活配置 
-          cat >> ~/.ssh/config << EOF
-          Host *
-              ServerAliveInterval 300 
-              ServerAliveCountMax 2 
-              TCPKeepAlive yes 
-          EOF
-          chmod 600 ~/.ssh/config 
-
-          # 私钥
-          echo "${{ secrets.UCLOUD_SSH_KEY }}" > ~/.ssh/ucloud_ssh_key 
-          chmod 600 ~/.ssh/ucloud_ssh_key 
-
-          ssh-keyscan ${{ secrets.UCLOUD_HOST }} >> ~/.ssh/known_hosts
-
-      - name: 登录 Docker 仓库
-        uses: docker/login-action@v3
+      - name: Execute deploy script
+        uses: appleboy/ssh-action@v1
         with:
-          username: ${{ secrets.DOCKER_REGISTRY_USER }}
-          password: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
-
-      - name: 构建并推送镜像
-        run: |
-          export IMAGE_TAG="docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}"
-          docker build -t $IMAGE_TAG .
-          docker push $IMAGE_TAG
-
-      - name: 远程部署到 UCloud 服务器
-        run: |
-          ssh -i ~/.ssh/ucloud_ssh_key root@${{ secrets.UCLOUD_HOST }} << 'DEPLOY_EOF'
-            echo -e "\n\033[42;1;37m 🔥 SSH登录成功！ [$(date '+%H:%M:%S')] \033[0m\n"
-            echo -e "\033[35m▶︎ 主机信息：\033[0m"
-            echo "IP地址：$(curl -s ifconfig.me)" 
-            echo "系统负载：$(uptime | awk -F 'load average:' '{print $2}')"
-
-            # 强制清理旧容器 
-            if docker ps -a | grep -q 'next-blog-strapi'; then 
-              echo "▸ 正在停止旧容器..."
-              docker stop next-blog-strapi && docker rm next-blog-strapi 
-              echo -e "\033[33m旧容器已清除\033[0m"
-            fi 
-
-            # 拉取最新镜像 
-            docker pull docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
-
-            # 启动新容器
-            docker run -d \
-              --name next-blog-strapi \
-              -p 1337:1337 \
-              --restart unless-stopped \
-              docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
-
-            # 简化的状态验证 
-            sleep 3  # 给予基础初始化时间 
-            echo -e "\n\033[44;1;37m 📊 容器运行状态 \033[0m"
-            docker ps --filter "name=running-app" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-            echo -e "\n\033[42;1;37m ✅ 强制部署完成！版本: ${{ github.sha  }} \033[0m"
-            echo "部署时间: $(date '+%Y-%m-%d %H:%M:%S')"
-          DEPLOY_EOF
+          host: ${{ secrets.UCLOUD_HOST }}
+          username: root
+          key: ${{ secrets.UCLOUD_SSH_KEY }}
+          script: |
+            cd /var/next-blog-strapi
+            git pull origin main
+            docker compose down
+            docker compose up -d --build
