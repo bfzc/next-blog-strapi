@@ -16,19 +16,19 @@ jobs:
           mkdir -p ~/.ssh 
           chmod 700 ~/.ssh 
 
-          # 写入全局保活配置 
+          # 全局保活配置 
           cat >> ~/.ssh/config << EOF
           Host *
               ServerAliveInterval 300 
               ServerAliveCountMax 2 
               TCPKeepAlive yes 
           EOF
-
-          # 设置权限 
           chmod 600 ~/.ssh/config 
-          chmod 600 ~/.ssh/ucloud_ssh_key 
 
+          # 私钥
           echo "${{ secrets.UCLOUD_SSH_KEY }}" > ~/.ssh/ucloud_ssh_key 
+          chmod 600 ~/.ssh/ucloud_ssh_key 
+          
           ssh-keyscan ${{ secrets.UCLOUD_HOST }} >> ~/.ssh/known_hosts
 
       - name: 登录 Docker 仓库
