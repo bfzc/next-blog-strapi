@@ -13,8 +13,8 @@ jobs:
       - name: 配置 SSH 私钥
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.UCLOUD_SSH_KEY }}" > ~/.ssh/ucloud_key
-          chmod 600 ~/.ssh/ucloud_key
+          echo "${{ secrets.UCLOUD_SSH_KEY }}" > ~/.ssh/ucloud_ssh_key
+          chmod 600 ~/.ssh/ucloud_ssh_key
           ssh-keyscan ${{ secrets.UCLOUD_HOST }} >> ~/.ssh/known_hosts
 
       - name: 登录 Docker 仓库
@@ -31,12 +31,12 @@ jobs:
 
       - name: 远程部署到 UCloud 服务器
         run: |
-          ssh -i ~/.ssh/ucloud_key ${{ secrets.UCLOUD_USER }}@${{ secrets.UCLOUD_HOST }}
+          ssh -i ~/.ssh/ucloud_ssh_key root@${{ secrets.UCLOUD_HOST }} << EOF
             # 拉取最新镜像 
             docker pull docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
             
             # 停止旧容器并保留回滚能力 
-            if docker ps | grep -q 'old-app'; then 
+            if docker ps -a | grep -q 'old-app'; then 
               docker rename old-app rollback-app 
             fi 
             
@@ -44,7 +44,7 @@ jobs:
             docker run -d \
               --name new-app \
               --env-file /opt/app/.env \
-              -p 80:3000 \
+              -p 3000:3000 \
               --health-cmd 'curl --fail http://localhost:3000/health || exit 1' \
               docker.io/bifengzhici/next-blog-strapi:${{  github.sha  }}
             
@@ -52,17 +52,21 @@ jobs:
             sleep 10
             if docker inspect --format '{{.State.Health.Status}}' new-app | grep -q 'healthy'; then
               # 切换流量到新容器
-              docker stop old-app || true
-              docker rm old-app || true
+              if docker ps -a | grep -q 'old-app'; then
+                docker stop old-app
+                docker rm old-app
+              fi
               docker rename new-app old-app
-              echo 'Deployment successful!'
+              echo '✅ 部署成功!'
             else
               # 自动回滚到旧版本
-              docker stop new-app || true
-              docker rm new-app || true
-              docker rename rollback-app old-app
-              docker start old-app
-              echo 'Deployment failed: Rollback to previous version'
+              docker stop new-app
+              docker rm new-app
+              if docker ps -a | grep -q 'rollback-app'; then
+                docker rename rollback-app old-app
+                docker start old-app
+              fi
+              echo '❌ 部署失败：已回滚至上一版本'
               exit 1
             fi
-          "
+          EOF
