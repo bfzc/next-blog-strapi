@@ -1,4 +1,3 @@
-version: '3'
 services:
   next-blog-strapi:
     container_name: next-blog-strapi
